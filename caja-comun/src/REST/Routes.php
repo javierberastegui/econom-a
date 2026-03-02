@@ -207,6 +207,87 @@ class Routes {
 		return new WP_REST_Response( array( 'ok' => $ok ) );
 	}
 
+	public function create_account( WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		if ( empty( $params['name'] ) || empty( $params['type'] ) ) {
+			return new WP_Error( 'ccf_invalid_account', 'name y type son obligatorios.', array( 'status' => 400 ) );
+		}
+		$id = $this->accounts_repository->save( $params );
+		return new WP_REST_Response( array( 'id' => $id ), 201 );
+	}
+	public function get_account( WP_REST_Request $request ) {
+		$row = $this->accounts_repository->find( (int) $request['id'] );
+		return $row ? new WP_REST_Response( $row ) : new WP_Error( 'ccf_not_found', 'Cuenta no encontrada.', array( 'status' => 404 ) );
+	}
+	public function update_account( WP_REST_Request $request ) {
+		if ( ! $this->accounts_repository->find( (int) $request['id'] ) ) {
+			return new WP_Error( 'ccf_not_found', 'Cuenta no encontrada.', array( 'status' => 404 ) );
+		}
+		$id = $this->accounts_repository->save( array_merge( $request->get_json_params(), array( 'id' => (int) $request['id'] ) ) );
+		return new WP_REST_Response( array( 'id' => $id ) );
+	}
+	public function delete_account( WP_REST_Request $request ) {
+		$deleted = $this->accounts_repository->delete( (int) $request['id'] );
+		return $deleted ? new WP_REST_Response( array( 'ok' => true ) ) : new WP_Error( 'ccf_not_found', 'Cuenta no encontrada.', array( 'status' => 404 ) );
+	}
+
+	public function create_category( WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		if ( empty( $params['name'] ) ) {
+			return new WP_Error( 'ccf_invalid_category', 'name es obligatorio.', array( 'status' => 400 ) );
+		}
+		$id = $this->categories_repository->save( $params );
+		return new WP_REST_Response( array( 'id' => $id ), 201 );
+	}
+	public function get_category( WP_REST_Request $request ) {
+		$row = $this->categories_repository->find( (int) $request['id'] );
+		return $row ? new WP_REST_Response( $row ) : new WP_Error( 'ccf_not_found', 'Categoría no encontrada.', array( 'status' => 404 ) );
+	}
+	public function update_category( WP_REST_Request $request ) {
+		if ( ! $this->categories_repository->find( (int) $request['id'] ) ) {
+			return new WP_Error( 'ccf_not_found', 'Categoría no encontrada.', array( 'status' => 404 ) );
+		}
+		$id = $this->categories_repository->save( array_merge( $request->get_json_params(), array( 'id' => (int) $request['id'] ) ) );
+		return new WP_REST_Response( array( 'id' => $id ) );
+	}
+	public function delete_category( WP_REST_Request $request ) {
+		$deleted = $this->categories_repository->delete( (int) $request['id'] );
+		return $deleted ? new WP_REST_Response( array( 'ok' => true ) ) : new WP_Error( 'ccf_not_found', 'Categoría no encontrada.', array( 'status' => 404 ) );
+	}
+
+	public function create_transaction( WP_REST_Request $request ) {
+		$params = $request->get_json_params();
+		if ( empty( $params['amount'] ) || (float) $params['amount'] <= 0 ) {
+			return new WP_Error( 'ccf_invalid_transaction', 'amount debe ser mayor a 0.', array( 'status' => 400 ) );
+		}
+		$id = $this->transactions_repository->insert( $params );
+		return new WP_REST_Response( array( 'id' => $id ), 201 );
+	}
+	public function get_transaction( WP_REST_Request $request ) {
+		$row = $this->transactions_repository->find( (int) $request['id'] );
+		return $row ? new WP_REST_Response( $row ) : new WP_Error( 'ccf_not_found', 'Movimiento no encontrado.', array( 'status' => 404 ) );
+	}
+	public function update_transaction( WP_REST_Request $request ) {
+		if ( ! $this->transactions_repository->find( (int) $request['id'] ) ) {
+			return new WP_Error( 'ccf_not_found', 'Movimiento no encontrado.', array( 'status' => 404 ) );
+		}
+		$ok = $this->transactions_repository->update( (int) $request['id'], $request->get_json_params() );
+		return new WP_REST_Response( array( 'ok' => $ok ) );
+	}
+	public function delete_transaction( WP_REST_Request $request ) {
+		$ok = $this->transactions_repository->delete( (int) $request['id'] );
+		return $ok ? new WP_REST_Response( array( 'ok' => true ) ) : new WP_Error( 'ccf_not_found', 'Movimiento no encontrado.', array( 'status' => 404 ) );
+	}
+
+	public function create_note( WP_REST_Request $request ) {
+		$content = (string) $request->get_param( 'content' );
+		if ( '' === trim( $content ) ) {
+			return new WP_Error( 'ccf_invalid_note', 'content es obligatorio.', array( 'status' => 400 ) );
+		}
+		$id = $this->notes_service->add( (int) $request['id'], $content, (string) $request->get_param( 'note_type' ), (bool) $request->get_param( 'is_pending' ) );
+		return new WP_REST_Response( array( 'id' => $id ), 201 );
+	}
+
 	public function save_income( WP_REST_Request $request ) {
 		$month_key = sanitize_text_field( (string) $request->get_param( 'month_key' ) );
 		if ( ! preg_match( '/^\d{4}-\d{2}$/', $month_key ) ) {
