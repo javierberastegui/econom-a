@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class AdminMenu {
+	private const CAPABILITY = 'manage_options';
+	private const MENU_SLUG  = 'ccf-dashboard';
+
 	private DashboardService $dashboard_service;
 	private MonthlyIncomesRepository $incomes_repository;
 	private MonthlyAllocationService $allocation_service;
@@ -26,10 +29,23 @@ class AdminMenu {
 	}
 
 	public function register(): void {
-		add_menu_page( 'Caja Común', 'Caja Común', 'manage_options', 'ccf-dashboard', array( $this, 'render_dashboard' ), 'dashicons-chart-pie', 26 );
-		add_submenu_page( 'ccf-dashboard', 'Ingresos Mensuales', 'Ingresos Mensuales', 'manage_options', 'ccf-monthly-incomes', array( $this, 'render_monthly_incomes' ) );
-		add_submenu_page( 'ccf-dashboard', 'Asignación Mensual', 'Asignación Mensual', 'manage_options', 'ccf-monthly-allocation', array( $this, 'render_monthly_allocation' ) );
-		add_submenu_page( 'ccf-dashboard', 'Ajustes', 'Ajustes', 'manage_options', 'ccf-settings', array( $this, 'render_settings' ) );
+		add_menu_page(
+			'Caja Común',
+			'Economía Hogar',
+			self::CAPABILITY,
+			self::MENU_SLUG,
+			array( $this, 'render_dashboard' ),
+			'dashicons-chart-pie',
+			26
+		);
+
+		add_submenu_page( self::MENU_SLUG, 'Dashboard', 'Dashboard', self::CAPABILITY, self::MENU_SLUG, array( $this, 'render_dashboard' ) );
+		add_submenu_page( self::MENU_SLUG, 'Ingresos Mensuales', 'Ingresos Mensuales', self::CAPABILITY, 'ccf-monthly-incomes', array( $this, 'render_monthly_incomes' ) );
+		add_submenu_page( self::MENU_SLUG, 'Asignación Mensual', 'Asignación Mensual', self::CAPABILITY, 'ccf-monthly-allocation', array( $this, 'render_monthly_allocation' ) );
+		add_submenu_page( self::MENU_SLUG, 'Ajustes', 'Ajustes', self::CAPABILITY, 'ccf-settings', array( $this, 'render_settings' ) );
+
+		// Punto de entrada alternativo para ubicar el plugin bajo "Ajustes".
+		add_options_page( 'Caja Común', 'Caja Común', self::CAPABILITY, 'ccf-settings', array( $this, 'render_settings' ) );
 	}
 
 	public function render_dashboard(): void {
