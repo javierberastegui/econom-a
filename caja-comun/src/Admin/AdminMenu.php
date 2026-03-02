@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class AdminMenu {
 	private const CAPABILITY = 'manage_options';
-	private const MENU_SLUG  = 'ccf-dashboard';
+	private const MENU_SLUG  = 'caja-comun';
 
 	private DashboardService $dashboard_service;
 	private MonthlyIncomesRepository $incomes_repository;
@@ -31,7 +31,7 @@ class AdminMenu {
 	public function register(): void {
 		add_menu_page(
 			'Caja Común',
-			'Economía Hogar',
+			'Caja Común',
 			self::CAPABILITY,
 			self::MENU_SLUG,
 			array( $this, 'render_dashboard' ),
@@ -40,18 +40,19 @@ class AdminMenu {
 		);
 
 		add_submenu_page( self::MENU_SLUG, 'Dashboard', 'Dashboard', self::CAPABILITY, self::MENU_SLUG, array( $this, 'render_dashboard' ) );
-		add_submenu_page( self::MENU_SLUG, 'Ingresos Mensuales', 'Ingresos Mensuales', self::CAPABILITY, 'ccf-monthly-incomes', array( $this, 'render_monthly_incomes' ) );
-		add_submenu_page( self::MENU_SLUG, 'Asignación Mensual', 'Asignación Mensual', self::CAPABILITY, 'ccf-monthly-allocation', array( $this, 'render_monthly_allocation' ) );
+		add_submenu_page( self::MENU_SLUG, 'Ingresos Mensuales', 'Ingresos Mensuales', self::CAPABILITY, 'ccf-incomes', array( $this, 'render_monthly_incomes' ) );
+		add_submenu_page( self::MENU_SLUG, 'Asignación Mensual', 'Asignación Mensual', self::CAPABILITY, 'ccf-allocations', array( $this, 'render_monthly_allocation' ) );
 		add_submenu_page( self::MENU_SLUG, 'Ajustes', 'Ajustes', self::CAPABILITY, 'ccf-settings', array( $this, 'render_settings' ) );
 
 		// Punto de entrada alternativo para ubicar el plugin bajo "Ajustes".
 		add_options_page( 'Caja Común', 'Caja Común', self::CAPABILITY, 'ccf-settings', array( $this, 'render_settings' ) );
+		add_management_page( 'Caja Común', 'Caja Común', self::CAPABILITY, self::MENU_SLUG, array( $this, 'render_dashboard' ) );
 	}
 
 	public function render_dashboard(): void {
 		$month_key = isset( $_GET['month_key'] ) ? sanitize_text_field( wp_unslash( $_GET['month_key'] ) ) : gmdate( 'Y-m' );
 		$summary   = $this->dashboard_service->month_summary( $month_key );
-		require CCF_PLUGIN_DIR . 'templates/admin/dashboard.php';
+		require CCF_PATH . 'templates/admin/dashboard.php';
 	}
 
 	public function render_monthly_incomes(): void {
@@ -68,7 +69,7 @@ class AdminMenu {
 		}
 
 		$incomes = $this->incomes_repository->list( $month_key, 20 );
-		require CCF_PLUGIN_DIR . 'templates/admin/monthly-incomes.php';
+		require CCF_PATH . 'templates/admin/monthly-incomes.php';
 	}
 
 	public function render_monthly_allocation(): void {
@@ -82,10 +83,10 @@ class AdminMenu {
 			echo '<div class="notice notice-success"><p>Asignación mensual ejecutada.</p></div>';
 		}
 
-		require CCF_PLUGIN_DIR . 'templates/admin/monthly-allocation.php';
+		require CCF_PATH . 'templates/admin/monthly-allocation.php';
 	}
 
 	public function render_settings(): void {
-		require CCF_PLUGIN_DIR . 'templates/admin/settings.php';
+		require CCF_PATH . 'templates/admin/settings.php';
 	}
 }

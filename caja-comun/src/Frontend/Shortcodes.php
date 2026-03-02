@@ -42,7 +42,7 @@ class Shortcodes {
 		$summary = $this->dashboard_service->month_summary( $month_key );
 
 		ob_start();
-		require CCF_PLUGIN_DIR . 'templates/frontend/dashboard-shortcode.php';
+		require CCF_PATH . 'templates/frontend/dashboard-shortcode.php';
 		return (string) ob_get_clean();
 	}
 }

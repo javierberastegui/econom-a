@@ -119,7 +119,7 @@ class Installer {
 		}
 
 		$this->seed_defaults();
-		update_option( 'ccf_plugin_version', CCF_PLUGIN_VERSION );
+		update_option( 'ccf_version', CCF_VERSION );
 	}
 
 	private function seed_defaults(): void {

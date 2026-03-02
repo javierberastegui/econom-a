@@ -19,7 +19,7 @@ class Autoloader {
 		}
 
 		$relative_class = substr( $class, strlen( $prefix ) );
-		$file           = CCF_PLUGIN_DIR . 'src/' . str_replace( '\\', '/', $relative_class ) . '.php';
+		$file           = CCF_PATH . 'src/' . str_replace( '\\', '/', $relative_class ) . '.php';
 
 		if ( file_exists( $file ) ) {
 			require_once $file;
