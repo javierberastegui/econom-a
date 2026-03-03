@@ -15,6 +15,18 @@ class Activator {
 		self::register_capabilities();
 	}
 
+	public static function maybe_recover(): void {
+		self::register_capabilities();
+
+		$installer = new Installer();
+		if ( CCF_VERSION !== (string) get_option( 'ccf_version', '' ) ) {
+			$installer->install();
+			return;
+		}
+
+		$installer->ensure_defaults();
+	}
+
 	private static function register_capabilities(): void {
 		$role = get_role( 'administrator' );
 		if ( ! $role ) {

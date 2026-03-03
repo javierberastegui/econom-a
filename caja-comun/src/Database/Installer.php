@@ -176,6 +176,10 @@ class Installer {
 		update_option( 'ccf_version', CCF_VERSION );
 	}
 
+	public function ensure_defaults(): void {
+		$this->seed_defaults();
+	}
+
 	private function seed_defaults(): void {
 		global $wpdb;
 		$now            = $this->database_manager->now();
