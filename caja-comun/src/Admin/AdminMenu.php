@@ -20,6 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class AdminMenu {
 	private const CAPABILITY = Capabilities::VIEW_DASHBOARD;
+	private const SAFE_ADMIN_CAPABILITY = 'manage_options';
 	private const MENU_SLUG  = 'caja-comun';
 
 	public function __construct(
@@ -36,17 +37,23 @@ class AdminMenu {
 	) {}
 
 	public function register(): void {
-		add_menu_page( 'Caja Común', 'Caja Común', self::CAPABILITY, self::MENU_SLUG, array( $this, 'render_dashboard' ), 'dashicons-chart-pie', 26 );
-		add_submenu_page( self::MENU_SLUG, 'Dashboard', 'Dashboard', self::CAPABILITY, self::MENU_SLUG, array( $this, 'render_dashboard' ) );
-		add_submenu_page( self::MENU_SLUG, 'Ingresos Mensuales', 'Ingresos Mensuales', self::CAPABILITY, 'ccf-incomes', array( $this, 'render_monthly_incomes' ) );
-		add_submenu_page( self::MENU_SLUG, 'Asignación Mensual', 'Asignación Mensual', self::CAPABILITY, 'ccf-allocations', array( $this, 'render_monthly_allocation' ) );
-		add_submenu_page( self::MENU_SLUG, 'Ajustes', 'Ajustes', self::CAPABILITY, 'ccf-settings', array( $this, 'render_settings' ) );
+		$menu_capability = $this->menu_capability();
 
-		add_submenu_page( self::MENU_SLUG, 'Transacciones', 'Transacciones', self::CAPABILITY, 'ccf-transactions', array( $this, 'render_transactions' ) );
-		add_submenu_page( self::MENU_SLUG, 'Cuentas', 'Cuentas', self::CAPABILITY, 'ccf-accounts', array( $this, 'render_accounts' ) );
-		add_submenu_page( self::MENU_SLUG, 'Categorías', 'Categorías', self::CAPABILITY, 'ccf-categories', array( $this, 'render_categories' ) );
-		add_submenu_page( self::MENU_SLUG, 'Justificantes', 'Justificantes', self::CAPABILITY, 'ccf-attachments', array( $this, 'render_attachments' ) );
-		add_submenu_page( self::MENU_SLUG, 'Revisión', 'Revisión de movimientos', self::CAPABILITY, 'ccf-review', array( $this, 'render_review' ) );
+		add_menu_page( 'Caja Común', 'Caja Común', $menu_capability, self::MENU_SLUG, array( $this, 'render_dashboard' ), 'dashicons-chart-pie', 26 );
+		add_submenu_page( self::MENU_SLUG, 'Dashboard', 'Dashboard', $menu_capability, self::MENU_SLUG, array( $this, 'render_dashboard' ) );
+		add_submenu_page( self::MENU_SLUG, 'Ingresos Mensuales', 'Ingresos Mensuales', $menu_capability, 'ccf-incomes', array( $this, 'render_monthly_incomes' ) );
+		add_submenu_page( self::MENU_SLUG, 'Asignación Mensual', 'Asignación Mensual', $menu_capability, 'ccf-allocations', array( $this, 'render_monthly_allocation' ) );
+		add_submenu_page( self::MENU_SLUG, 'Ajustes', 'Ajustes', $menu_capability, 'ccf-settings', array( $this, 'render_settings' ) );
+
+		add_submenu_page( self::MENU_SLUG, 'Transacciones', 'Transacciones', $menu_capability, 'ccf-transactions', array( $this, 'render_transactions' ) );
+		add_submenu_page( self::MENU_SLUG, 'Cuentas', 'Cuentas', $menu_capability, 'ccf-accounts', array( $this, 'render_accounts' ) );
+		add_submenu_page( self::MENU_SLUG, 'Categorías', 'Categorías', $menu_capability, 'ccf-categories', array( $this, 'render_categories' ) );
+		add_submenu_page( self::MENU_SLUG, 'Justificantes', 'Justificantes', $menu_capability, 'ccf-attachments', array( $this, 'render_attachments' ) );
+		add_submenu_page( self::MENU_SLUG, 'Revisión', 'Revisión de movimientos', $menu_capability, 'ccf-review', array( $this, 'render_review' ) );
+	}
+
+	private function menu_capability(): string {
+		return current_user_can( self::CAPABILITY ) ? self::CAPABILITY : self::SAFE_ADMIN_CAPABILITY;
 	}
 	// ... existing methods unchanged below
 	public function render_dashboard(): void { $month_key = sanitize_text_field( wp_unslash( $_GET['month_key'] ?? gmdate( 'Y-m' ) ) ); $summary = $this->dashboard_service->month_summary( $month_key ); require CCF_PATH . 'templates/admin/dashboard.php'; }
