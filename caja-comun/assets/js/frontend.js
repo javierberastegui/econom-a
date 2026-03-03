@@ -25,6 +25,32 @@
 		el.classList.toggle('is-error', isError);
 	};
 
+	const openMovementModal = () => {
+		if (!modal) return;
+		if (typeof modal.showModal === 'function') {
+			try {
+				modal.showModal();
+				return;
+			} catch (err) {
+				// Fallback below for browsers/issues with <dialog>.
+			}
+		}
+		modal.setAttribute('open', 'open');
+	};
+
+	const closeMovementModal = () => {
+		if (!modal) return;
+		if (typeof modal.close === 'function') {
+			try {
+				modal.close();
+				return;
+			} catch (err) {
+				// Fallback below for browsers/issues with <dialog>.
+			}
+		}
+		modal.removeAttribute('open');
+	};
+
 	const monthInput = document.getElementById('ccf-month');
 	const tableBody = document.querySelector('#ccf-transactions-table tbody');
 	const emptyState = document.getElementById('ccf-empty-state');
@@ -209,7 +235,7 @@
 		movementForm.amount.value = tx?.amount || '';
 		movementForm.status.value = tx?.status || 'posted';
 		modalTitle.textContent = tx ? 'Editar movimiento' : 'Nuevo movimiento';
-		modal.showModal();
+		openMovementModal();
 	};
 
 	const isCategoryRequired = (type) => ['expense', 'income'].includes(type);
@@ -244,7 +270,7 @@
 	};
 
 	document.getElementById('ccf-new-movement').addEventListener('click', () => openModal());
-	document.getElementById('ccf-modal-close').addEventListener('click', () => modal.close());
+	document.getElementById('ccf-modal-close').addEventListener('click', () => closeMovementModal());
 	document.getElementById('ccf-open-create-category').addEventListener('click', () => { categoryWrap.hidden = false; categoryInput.focus(); });
 	document.getElementById('ccf-create-category-cancel').addEventListener('click', () => { categoryWrap.hidden = true; setFeedback(categoryCreateFeedback, ''); });
 	document.getElementById('ccf-create-category-submit').addEventListener('click', async () => {
