@@ -1,118 +1,283 @@
-(function(){
+(function () {
+	const root = document.querySelector('[data-ccf-view="app"]');
+	if (!root) return;
+
 	const cfg = window.CCF_FRONTEND || {};
+	const charts = {};
+	const state = { currentMonth: new Date().toISOString().slice(0, 7), accounts: [], categories: [], rows: [] };
+
 	const api = async (path, options = {}) => {
-		const headers = Object.assign({'Content-Type':'application/json'}, options.headers || {});
-		if (cfg.nonce) { headers['X-WP-Nonce'] = cfg.nonce; }
-		const res = await fetch((cfg.apiBase || '') + path, Object.assign({}, options, { headers }));
-		const data = await res.json().catch(() => ({}));
-		if (!res.ok) { throw new Error(data.message || data.error || 'Error'); }
+		const isForm = options.body instanceof FormData;
+		const headers = Object.assign({}, options.headers || {});
+		if (!isForm) headers['Content-Type'] = 'application/json';
+		if (cfg.nonce) headers['X-WP-Nonce'] = cfg.nonce;
+		const response = await fetch((cfg.apiBase || '') + path, Object.assign({}, options, { headers }));
+		const data = await response.json().catch(() => ({}));
+		if (!response.ok) throw new Error(data.message || data.error || 'No se pudo completar la operación.');
 		return data;
 	};
 
-	const fmt = (n) => `${Number(n || 0).toFixed(2)} €`;
-	const dashboard = document.querySelector('[data-ccf-view="dashboard"]');
-	if (dashboard) {
-		const month = new Date().toISOString().slice(0,7);
-		Promise.all([
-			api(`dashboard/month-summary?month_key=${month}`),
-			api(`charts/income-vs-common?from=${month}&to=${month}`),
-			api(`charts/common-expense-by-category?month=${month}`),
-			api(`charts/common-budget-vs-actual?month=${month}`),
-			api(`charts/common-budget-trend?from=${month}&to=${month}`)
-		]).then(([summary, incomeLine, byCat, budgetActual, trend]) => {
-			document.getElementById('ccf-kpi-income').textContent = fmt(summary.income_total);
-			document.getElementById('ccf-kpi-separated').textContent = fmt(summary.separated_total);
-			document.getElementById('ccf-kpi-common').textContent = fmt(summary.common_budget);
-			document.getElementById('ccf-kpi-expense').textContent = fmt(budgetActual.actual_expense);
-			new Chart(document.getElementById('ccf-chart-income'), { type:'line', data:{ labels: incomeLine.series.map(r=>r.month_key), datasets:[{label:'Ingresos', data:incomeLine.series.map(r=>r.income_total)},{label:'Separado', data:incomeLine.series.map(r=>r.separated_total)},{label:'Presupuesto común', data:incomeLine.series.map(r=>r.common_budget)}] } });
-			new Chart(document.getElementById('ccf-chart-category'), { type:'doughnut', data:{ labels: byCat.map(r=>r.category_name), datasets:[{ data:byCat.map(r=>r.total)}]} });
-			new Chart(document.getElementById('ccf-chart-budget-vs-actual'), { type:'bar', data:{ labels:['Presupuesto común','Gasto real'], datasets:[{ data:[budgetActual.common_budget, budgetActual.actual_expense] }] } });
-			new Chart(document.getElementById('ccf-chart-trend'), { type:'line', data:{ labels: trend.map(r=>r.month_key), datasets:[{label:'Presupuesto común', data:trend.map(r=>r.common_budget)}] } });
-		});
-	}
+	const fmt = (n) => `${Number(n || 0).toFixed(2).replace('.', ',')} €`;
+	const safeLabel = (v, fallback) => (v === undefined || v === null || String(v).trim() === '' ? fallback : String(v));
 
-	const fillSelect = (el, rows, labelKey='name', valueKey='id', all=true) => {
-		if (!el) return;
-		el.innerHTML = all ? '<option value="">Todos</option>' : '';
-		rows.forEach((r) => {
-			const opt = document.createElement('option'); opt.value = r[valueKey]; opt.textContent = r[labelKey]; el.appendChild(opt);
+	const monthInput = document.getElementById('ccf-month');
+	const tableBody = document.querySelector('#ccf-transactions-table tbody');
+	const emptyState = document.getElementById('ccf-empty-state');
+	const tableFeedback = document.getElementById('ccf-table-feedback');
+	const modal = document.getElementById('ccf-movement-modal');
+	const movementForm = document.getElementById('ccf-movement-form');
+	const modalFeedback = document.getElementById('ccf-modal-feedback');
+	const inlineAttachment = document.getElementById('ccf-inline-attachment');
+	const modalTitle = document.getElementById('ccf-modal-title');
+	const categorySelect = document.getElementById('ccf-category-select');
+	const accountSelect = document.getElementById('ccf-source-account');
+
+	const fillSelect = (el, rows, placeholder) => {
+		el.innerHTML = '';
+		const defaultOpt = document.createElement('option');
+		defaultOpt.value = '';
+		defaultOpt.textContent = placeholder;
+		el.appendChild(defaultOpt);
+		rows.forEach((row) => {
+			const opt = document.createElement('option');
+			opt.value = row.id;
+			opt.textContent = row.name;
+			el.appendChild(opt);
 		});
 	};
 
-	const txForm = document.getElementById('ccf-transaction-form');
-	if (txForm) {
-		Promise.all([api('accounts'), api('categories')]).then(([acc, cat]) => {
-			fillSelect(document.getElementById('ccf-source-account'), acc.data, 'name', 'id', false);
-			fillSelect(document.getElementById('ccf-destination-account'), acc.data, 'name', 'id', false);
-			fillSelect(document.getElementById('ccf-category-select'), cat.data, 'name', 'id', false);
-		});
-		txForm.addEventListener('submit', async (e) => {
-			e.preventDefault();
-			const fd = new FormData(txForm);
-			const payload = Object.fromEntries(fd.entries());
-			const feedback = document.getElementById('ccf-transaction-feedback');
-			try {
-				const saved = await api('transactions', { method:'POST', body: JSON.stringify(payload) });
-				const files = document.getElementById('ccf-attachments').files;
-				if (files.length) {
-					const data = new FormData();
-					Array.from(files).forEach(f => data.append('files[]', f));
-					await fetch((cfg.apiBase || '') + `transactions/${saved.id}/attachments`, { method:'POST', headers:{'X-WP-Nonce':cfg.nonce}, body:data });
-				}
-				feedback.textContent = 'Transacción guardada.';
-			} catch (err) { feedback.textContent = err.message; }
-		});
-	}
+	const setFeedback = (el, msg, isError = false) => {
+		el.textContent = msg || '';
+		el.classList.toggle('is-error', isError);
+	};
 
-	const incomeForm = document.getElementById('ccf-income-form');
-	if (incomeForm) {
-		const feedback = document.getElementById('ccf-income-feedback');
-		incomeForm.addEventListener('submit', async (e) => {
-			e.preventDefault();
-			const fd = new FormData(incomeForm);
-			const month = fd.get('month_key');
-			try {
-				await api('monthly-incomes', { method:'POST', body: JSON.stringify({ month_key: month, user_id:1, amount: fd.get('income_a'), notes: fd.get('notes_a') }) });
-				await api('monthly-incomes', { method:'POST', body: JSON.stringify({ month_key: month, user_id:2, amount: fd.get('income_b'), notes: fd.get('notes_b') }) });
-				feedback.textContent = 'Ingresos guardados';
-			} catch (err) { feedback.textContent = err.message; }
-		});
-		document.getElementById('ccf-preview-allocation').addEventListener('click', async () => {
-			const month = new FormData(incomeForm).get('month_key');
-			const data = await api('monthly-allocations/preview', { method:'POST', body: JSON.stringify({ month_key: month }) });
-			feedback.textContent = `Preview: presupuesto común ${fmt(data.common_budget)}`;
-		});
-		document.getElementById('ccf-run-allocation').addEventListener('click', async () => {
-			const month = new FormData(incomeForm).get('month_key');
-			const data = await api('monthly-allocations/run', { method:'POST', body: JSON.stringify({ month_key: month }) });
-			feedback.textContent = `Asignación ejecutada. Estado: ${data.status || 'ok'}`;
-		});
-	}
+	const renderKpis = (summary, budgetActual) => {
+		const income = Number(summary.income_total || 0);
+		const expense = Number((budgetActual && budgetActual.actual_expense) || 0);
+		document.getElementById('ccf-kpi-income').textContent = fmt(income);
+		document.getElementById('ccf-kpi-expense').textContent = fmt(expense);
+		document.getElementById('ccf-kpi-balance').textContent = fmt(income - expense);
+		document.getElementById('ccf-kpi-common').textContent = fmt(summary.common_budget || 0);
+	};
 
-	const filtersForm = document.getElementById('ccf-transactions-filters');
-	if (filtersForm) {
-		Promise.all([api('accounts'), api('categories')]).then(([acc, cat]) => {
-			fillSelect(document.getElementById('ccf-filter-account'), acc.data);
-			fillSelect(document.getElementById('ccf-filter-category'), cat.data);
-		});
-		const loadTx = async () => {
-			const params = new URLSearchParams(new FormData(filtersForm));
-			const rows = (await api(`transactions?${params.toString()}`)).data || [];
-			const tbody = document.querySelector('#ccf-transactions-table tbody');
-			tbody.innerHTML = '';
-			rows.forEach((tx) => {
-				const tr = document.createElement('tr');
-				tr.innerHTML = `<td>${tx.transaction_date}</td><td>${tx.type}</td><td>${tx.description || ''}</td><td>${fmt(tx.amount)}</td><td>${tx.status}</td><td><button data-id="${tx.id}" data-reviewed="1">Revisado</button> <button data-id="${tx.id}" data-reviewed="0">Pendiente</button></td>`;
-				tbody.appendChild(tr);
+	const destroyChart = (id) => { if (charts[id]) charts[id].destroy(); };
+
+	const toggleEmptyForChart = (canvasId, hasData) => {
+		const wrap = document.getElementById(canvasId).closest('.ccf-chart-card');
+		wrap.querySelector('.ccf-chart-empty').hidden = hasData;
+	};
+
+	const renderCharts = (incomeLine, byCat, trend) => {
+		const incomeLabels = (incomeLine.series || []).map((r) => safeLabel(r.month_key, state.currentMonth));
+		const incomeData = (incomeLine.series || []).map((r) => Number(r.income_total || 0));
+		const expenseData = (incomeLine.series || []).map((r) => Number(r.common_budget || 0));
+		destroyChart('income');
+		const hasIncomeData = incomeData.some((n) => n > 0) || expenseData.some((n) => n > 0);
+		toggleEmptyForChart('ccf-chart-income', hasIncomeData);
+		if (hasIncomeData) {
+			charts.income = new Chart(document.getElementById('ccf-chart-income'), {
+				type: 'line',
+				data: { labels: incomeLabels, datasets: [{ label: 'Ingresos', data: incomeData, borderColor: '#8ec5ff' }, { label: 'Gasto', data: expenseData, borderColor: '#ff8ea6' }] },
+				options: { responsive: true, plugins: { legend: { labels: { color: '#dbeafe' } } }, scales: { x: { ticks: { color: '#bfdbfe' } }, y: { ticks: { color: '#bfdbfe' } } } }
 			});
-		};
-		filtersForm.addEventListener('submit', (e) => { e.preventDefault(); loadTx(); });
-		document.addEventListener('click', async (e) => {
-			const btn = e.target.closest('button[data-id][data-reviewed]');
-			if (!btn) return;
-			await api(`transactions/${btn.dataset.id}/review`, { method:'POST', body: JSON.stringify({ reviewed: Number(btn.dataset.reviewed), flagged: 0 }) });
-			loadTx();
+		}
+
+		const catLabels = (byCat || []).map((r) => safeLabel(r.category_name, 'Sin categoría'));
+		const catData = (byCat || []).map((r) => Number(r.total || 0));
+		destroyChart('category');
+		const hasCategoryData = catData.some((n) => n > 0);
+		toggleEmptyForChart('ccf-chart-category', hasCategoryData);
+		if (hasCategoryData) {
+			charts.category = new Chart(document.getElementById('ccf-chart-category'), {
+				type: 'doughnut',
+				data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: ['#7dd3fc', '#a78bfa', '#f9a8d4', '#34d399', '#fbbf24', '#fb7185'] }] },
+				options: { plugins: { legend: { labels: { color: '#dbeafe' } } } }
+			});
+		}
+
+		const trendLabels = (trend || []).map((r) => safeLabel(r.month_key, state.currentMonth));
+		const trendData = (trend || []).map((r) => Number(r.common_budget || 0));
+		destroyChart('trend');
+		const hasTrendData = trendData.some((n) => n > 0);
+		toggleEmptyForChart('ccf-chart-trend', hasTrendData);
+		if (hasTrendData) {
+			charts.trend = new Chart(document.getElementById('ccf-chart-trend'), {
+				type: 'bar',
+				data: { labels: trendLabels, datasets: [{ label: 'Presupuesto', data: trendData, backgroundColor: '#60a5fa' }] },
+				options: { plugins: { legend: { labels: { color: '#dbeafe' } } }, scales: { x: { ticks: { color: '#bfdbfe' } }, y: { ticks: { color: '#bfdbfe' } } } }
+			});
+		}
+	};
+
+	const renderRows = (rows) => {
+		state.rows = rows;
+		tableBody.innerHTML = '';
+		emptyState.hidden = rows.length > 0;
+		rows.forEach((tx) => {
+			const tr = document.createElement('tr');
+			const hasTicket = tx.has_ticket || Number(tx.attachment_count || 0) > 0;
+			tr.innerHTML = `
+				<td>${safeLabel(tx.transaction_date, '-')}</td>
+				<td>${safeLabel(tx.type, '-')}</td>
+				<td>${safeLabel(tx.description, 'Sin concepto')}</td>
+				<td>${safeLabel(tx.category_name, 'Sin categoría')}</td>
+				<td>${safeLabel(tx.account_name, 'Sin cuenta')}</td>
+				<td>${fmt(tx.amount)}</td>
+				<td><span class="ccf-ticket ${hasTicket ? 'is-on' : ''}">${hasTicket ? 'Con ticket' : 'Sin ticket'}</span></td>
+				<td>${safeLabel(tx.status, 'pendiente')}</td>
+				<td>
+					<div class="ccf-row-actions">
+						<button type="button" class="ccf-btn ccf-btn-soft" data-action="edit" data-id="${tx.id}">Editar</button>
+						<button type="button" class="ccf-btn ccf-btn-soft" data-action="attach" data-id="${tx.id}">Adjuntar</button>
+						<button type="button" class="ccf-btn ccf-btn-soft" data-action="ticket" data-id="${tx.id}">Ver</button>
+						<button type="button" class="ccf-btn ccf-btn-danger" data-action="delete" data-id="${tx.id}">Borrar</button>
+					</div>
+				</td>`;
+			tableBody.appendChild(tr);
 		});
-		loadTx();
-	}
+	};
+
+	const fetchTransactions = async () => {
+		const data = await api(`transactions?month=${state.currentMonth}&limit=200`);
+		const rows = (data.data || []).map((tx) => {
+			const account = state.accounts.find((a) => Number(a.id) === Number(tx.source_account_id || tx.destination_account_id));
+			const category = state.categories.find((c) => Number(c.id) === Number(tx.category_id));
+			return Object.assign({}, tx, {
+				account_name: account ? account.name : '',
+				category_name: category ? category.name : ''
+			});
+		});
+		await Promise.all(rows.map(async (row) => {
+			const atts = await api(`transactions/${row.id}/attachments`);
+			row.attachment_count = (atts.data || []).length;
+			row.has_ticket = row.attachment_count > 0;
+		}));
+		renderRows(rows);
+	};
+
+	const refreshAll = async () => {
+		setFeedback(tableFeedback, 'Actualizando…');
+		try {
+			const [summary, incomeLine, byCat, trend, budgetActual] = await Promise.all([
+				api(`dashboard/month-summary?month_key=${state.currentMonth}`),
+				api(`charts/income-vs-common?from=${state.currentMonth}&to=${state.currentMonth}`),
+				api(`charts/common-expense-by-category?month=${state.currentMonth}`),
+				api(`charts/common-budget-trend?from=${state.currentMonth}&to=${state.currentMonth}`),
+				api(`charts/common-budget-vs-actual?month=${state.currentMonth}`)
+			]);
+			renderKpis(summary, budgetActual);
+			renderCharts(incomeLine, byCat, trend);
+			await fetchTransactions();
+			setFeedback(tableFeedback, 'Datos al día.');
+		} catch (err) {
+			setFeedback(tableFeedback, err.message, true);
+		}
+	};
+
+	const openModal = (tx) => {
+		movementForm.reset();
+		modalFeedback.textContent = '';
+		movementForm.id.value = tx?.id || '';
+		movementForm.transaction_date.value = tx?.transaction_date || `${state.currentMonth}-01`;
+		movementForm.type.value = tx?.type || 'expense';
+		movementForm.description.value = tx?.description || '';
+		movementForm.category_id.value = tx?.category_id || '';
+		movementForm.source_account_id.value = tx?.source_account_id || '';
+		movementForm.amount.value = tx?.amount || '';
+		movementForm.status.value = tx?.status || 'posted';
+		modalTitle.textContent = tx ? 'Editar movimiento' : 'Nuevo movimiento';
+		modal.showModal();
+	};
+
+	document.getElementById('ccf-new-movement').addEventListener('click', () => openModal());
+	document.getElementById('ccf-modal-close').addEventListener('click', () => modal.close());
+	monthInput.addEventListener('change', () => {
+		state.currentMonth = monthInput.value;
+		refreshAll();
+	});
+
+	movementForm.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const fd = new FormData(movementForm);
+		const txId = fd.get('id');
+		const payload = {
+			transaction_date: fd.get('transaction_date'),
+			type: fd.get('type'),
+			description: fd.get('description'),
+			category_id: fd.get('category_id') || null,
+			source_account_id: fd.get('source_account_id') || null,
+			amount: fd.get('amount'),
+			status: fd.get('status')
+		};
+		try {
+			const result = txId ? await api(`transactions/${txId}`, { method: 'PUT', body: JSON.stringify(payload) }) : await api('transactions', { method: 'POST', body: JSON.stringify(payload) });
+			const realId = txId || result.id;
+			const files = document.getElementById('ccf-attachments').files;
+			if (files.length && realId) {
+				const upload = new FormData();
+				Array.from(files).forEach((f) => upload.append('files[]', f));
+				await api(`transactions/${realId}/attachments`, { method: 'POST', body: upload });
+			}
+			setFeedback(modalFeedback, 'Movimiento guardado correctamente.');
+			modal.close();
+			await refreshAll();
+		} catch (err) {
+			setFeedback(modalFeedback, err.message, true);
+		}
+	});
+
+	tableBody.addEventListener('click', async (e) => {
+		const btn = e.target.closest('button[data-action][data-id]');
+		if (!btn) return;
+		const id = Number(btn.dataset.id);
+		const tx = state.rows.find((row) => Number(row.id) === id);
+		if (!tx) return;
+		try {
+			if (btn.dataset.action === 'edit') {
+				openModal(tx);
+				return;
+			}
+			if (btn.dataset.action === 'delete') {
+				if (!window.confirm('¿Borrar este movimiento?')) return;
+				await api(`transactions/${id}`, { method: 'DELETE' });
+			}
+			if (btn.dataset.action === 'attach') {
+				inlineAttachment.onchange = async () => {
+					if (!inlineAttachment.files.length) return;
+					const upload = new FormData();
+					upload.append('file', inlineAttachment.files[0]);
+					await api(`transactions/${id}/attachments`, { method: 'POST', body: upload });
+					await refreshAll();
+				};
+				inlineAttachment.click();
+				return;
+			}
+			if (btn.dataset.action === 'ticket') {
+				const atts = await api(`transactions/${id}/attachments`);
+				if (!atts.data || !atts.data.length) {
+					setFeedback(tableFeedback, 'Este movimiento aún no tiene ticket.', true);
+					return;
+				}
+				window.open(atts.data[0].url, '_blank');
+				return;
+			}
+			await refreshAll();
+		} catch (err) {
+			setFeedback(tableFeedback, err.message, true);
+		}
+	});
+
+	(async () => {
+		try {
+			const [acc, cat] = await Promise.all([api('accounts'), api('categories')]);
+			state.accounts = acc.data || [];
+			state.categories = cat.data || [];
+			fillSelect(accountSelect, state.accounts, 'Selecciona cuenta');
+			fillSelect(categorySelect, state.categories, 'Sin categoría');
+			monthInput.value = state.currentMonth;
+			await refreshAll();
+		} catch (err) {
+			setFeedback(tableFeedback, err.message, true);
+		}
+	})();
 })();

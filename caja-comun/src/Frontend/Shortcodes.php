@@ -16,10 +16,10 @@ class Shortcodes {
 	public function register(): void {
 		add_shortcode( 'caja_comun_dashboard', array( $this, 'render_legacy_dashboard' ) );
 		add_shortcode( 'ccf_app', array( $this, 'render_app' ) );
-		add_shortcode( 'ccf_dashboard', array( $this, 'render_dashboard' ) );
-		add_shortcode( 'ccf_income_form', array( $this, 'render_income_form' ) );
-		add_shortcode( 'ccf_transaction_form', array( $this, 'render_transaction_form' ) );
-		add_shortcode( 'ccf_transactions_list', array( $this, 'render_transactions_list' ) );
+		add_shortcode( 'ccf_dashboard', array( $this, 'render_deprecated_frontend_shortcode' ) );
+		add_shortcode( 'ccf_income_form', array( $this, 'render_deprecated_frontend_shortcode' ) );
+		add_shortcode( 'ccf_transaction_form', array( $this, 'render_deprecated_frontend_shortcode' ) );
+		add_shortcode( 'ccf_transactions_list', array( $this, 'render_deprecated_frontend_shortcode' ) );
 		add_shortcode( 'ccf_login', array( $this, 'render_deprecated_access_shortcode' ) );
 		add_shortcode( 'ccf_logout', array( $this, 'render_deprecated_access_shortcode' ) );
 	}
@@ -28,7 +28,7 @@ class Shortcodes {
 		if ( ! is_user_logged_in() ) {
 			return '<p>Debes iniciar sesión para ver Caja Común.</p>';
 		}
-		$atts = shortcode_atts( array( 'month' => gmdate( 'Y-m' ), 'show_incomes' => 'yes', 'show_movements' => 'yes' ), $atts, 'caja_comun_dashboard' );
+		$atts    = shortcode_atts( array( 'month' => gmdate( 'Y-m' ) ), $atts, 'caja_comun_dashboard' );
 		$summary = $this->dashboard_service->month_summary( sanitize_text_field( $atts['month'] ) );
 		ob_start();
 		require CCF_PATH . 'templates/frontend/dashboard-shortcode.php';
@@ -42,36 +42,13 @@ class Shortcodes {
 		return (string) ob_get_clean();
 	}
 
-	public function render_dashboard(): string {
+	public function render_deprecated_frontend_shortcode(): string {
 		$this->enqueue_assets();
-		ob_start();
-		require CCF_PATH . 'templates/frontend/dashboard.php';
-		return (string) ob_get_clean();
-	}
-
-	public function render_income_form(): string {
-		$this->enqueue_assets();
-		ob_start();
-		require CCF_PATH . 'templates/frontend/income-form.php';
-		return (string) ob_get_clean();
-	}
-
-	public function render_transaction_form(): string {
-		$this->enqueue_assets();
-		ob_start();
-		require CCF_PATH . 'templates/frontend/transaction-form.php';
-		return (string) ob_get_clean();
-	}
-
-	public function render_transactions_list(): string {
-		$this->enqueue_assets();
-		ob_start();
-		require CCF_PATH . 'templates/frontend/transactions-list.php';
-		return (string) ob_get_clean();
+		return '<div class="ccf-card ccf-legacy-notice"><p>Este shortcode permanece por compatibilidad, pero la experiencia recomendada es <code>[ccf_app]</code>.</p></div>';
 	}
 
 	public function render_deprecated_access_shortcode(): string {
-		return '<div class="ccf-card"><p>Este shortcode ya no es necesario. Protege la página con contraseña nativa de WordPress y usa [ccf_app].</p></div>';
+		return '<div class="ccf-card ccf-legacy-notice"><p>Este shortcode ya no es necesario. Protege la página con contraseña nativa de WordPress y usa <code>[ccf_app]</code>.</p></div>';
 	}
 
 	private function enqueue_assets(): void {
@@ -83,7 +60,7 @@ class Shortcodes {
 			'CCF_FRONTEND',
 			array(
 				'apiBase' => esc_url_raw( rest_url( 'caja-comun/v1/' ) ),
-				'nonce' => wp_create_nonce( 'wp_rest' ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
 			)
 		);
 	}
