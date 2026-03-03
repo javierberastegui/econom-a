@@ -238,52 +238,33 @@
 		openMovementModal();
 	};
 
-	const isCategoryRequired = (type) => ['expense', 'income'].includes(type);
-	const isAccountRequired = (type) => ['expense', 'income', 'transfer', 'adjustment'].includes(type);
-
-	const validateBeforeSave = (payload) => {
-		if (!payload.transaction_date) return 'Debes seleccionar una fecha.';
-		if (!payload.type) return 'Debes seleccionar un tipo de movimiento.';
-		if (!payload.description || payload.description.trim().length === 0) return 'Debes indicar un concepto.';
-		if (!payload.amount || Number(payload.amount) <= 0) return 'El importe no es válido.';
-		if (isCategoryRequired(payload.type) && !payload.category_id) return 'Debes seleccionar una categoría.';
-		if (isAccountRequired(payload.type) && !payload.source_account_id) return 'Debes seleccionar una cuenta.';
-		return '';
-	};
-
-	const normalizeBackendError = (message) => {
-		const msg = String(message || '').toLowerCase();
-		if (msg.includes('categor')) return 'Debes seleccionar una categoría.';
-		if (msg.includes('cuenta') || msg.includes('account')) return 'Debes seleccionar una cuenta.';
-		if (msg.includes('amount') || msg.includes('importe')) return 'El importe no es válido.';
-		return message || 'No se pudo guardar el movimiento.';
-	};
-
-	const loadCatalogs = async () => {
-		const [acc, cat] = await Promise.all([
-			api('accounts?status=active').catch(() => ({ data: [] })),
-			api('categories?active=1').catch(() => ({ data: [] }))
-		]);
-		state.accounts = acc.data || [];
-		state.categories = cat.data || [];
-		renderCatalogs();
-	};
 
 	document.getElementById('ccf-new-movement').addEventListener('click', () => openModal());
 	document.getElementById('ccf-modal-close').addEventListener('click', () => closeMovementModal());
 	document.getElementById('ccf-open-create-category').addEventListener('click', () => { categoryWrap.hidden = false; categoryInput.focus(); });
 	document.getElementById('ccf-create-category-cancel').addEventListener('click', () => { categoryWrap.hidden = true; setFeedback(categoryCreateFeedback, ''); });
+	categorySelect.addEventListener('change', () => {
+		if (movementForm.category_id.value) setFeedback(modalFeedback, '');
+	});
 	document.getElementById('ccf-create-category-submit').addEventListener('click', async () => {
 		const name = categoryInput.value.trim();
 		if (!name) return setFeedback(categoryCreateFeedback, 'Escribe un nombre para la categoría.', true);
 		try {
+			setFeedback(modalFeedback, '');
 			const response = await api('categories', { method: 'POST', body: JSON.stringify({ name, active: 1 }) });
-			if (!response.id) throw new Error('No se pudo guardar la categoría.');
 			await loadCatalogs();
-			movementForm.category_id.value = String(response.id);
+			const createdId = Number(response?.id || response?.data?.id || 0);
+			if (createdId > 0) {
+				movementForm.category_id.value = String(createdId);
+			} else {
+				const createdCategory = state.categories.find((category) => String(category.name || '').toLowerCase() === name.toLowerCase());
+				movementForm.category_id.value = createdCategory ? String(createdCategory.id) : '';
+			}
+			if (!movementForm.category_id.value) throw new Error('Categoría creada, pero no se pudo seleccionar automáticamente. Selecciónala manualmente.');
 			categoryInput.value = '';
 			categoryWrap.hidden = true;
 			setFeedback(categoryCreateFeedback, 'Categoría creada correctamente.');
+			setFeedback(modalFeedback, '');
 		} catch (err) {
 			setFeedback(categoryCreateFeedback, normalizeBackendError(err.message), true);
 		}
@@ -319,7 +300,7 @@
 				Array.from(files).forEach((f) => upload.append('files[]', f));
 				await api(`transactions/${realId}/attachments`, { method: 'POST', body: upload });
 			}
-			modal.close();
+			closeMovementModal();
 			await refreshAll();
 			setFeedback(tableFeedback, 'Movimiento guardado correctamente.');
 		} catch (err) {
