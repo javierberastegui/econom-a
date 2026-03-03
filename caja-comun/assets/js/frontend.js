@@ -243,17 +243,28 @@
 	document.getElementById('ccf-modal-close').addEventListener('click', () => closeMovementModal());
 	document.getElementById('ccf-open-create-category').addEventListener('click', () => { categoryWrap.hidden = false; categoryInput.focus(); });
 	document.getElementById('ccf-create-category-cancel').addEventListener('click', () => { categoryWrap.hidden = true; setFeedback(categoryCreateFeedback, ''); });
+	categorySelect.addEventListener('change', () => {
+		if (movementForm.category_id.value) setFeedback(modalFeedback, '');
+	});
 	document.getElementById('ccf-create-category-submit').addEventListener('click', async () => {
 		const name = categoryInput.value.trim();
 		if (!name) return setFeedback(categoryCreateFeedback, 'Escribe un nombre para la categoría.', true);
 		try {
+			setFeedback(modalFeedback, '');
 			const response = await api('categories', { method: 'POST', body: JSON.stringify({ name, active: 1 }) });
-			if (!response.id) throw new Error('No se pudo guardar la categoría.');
 			await loadCatalogs();
-			movementForm.category_id.value = String(response.id);
+			const createdId = Number(response?.id || response?.data?.id || 0);
+			if (createdId > 0) {
+				movementForm.category_id.value = String(createdId);
+			} else {
+				const createdCategory = state.categories.find((category) => String(category.name || '').toLowerCase() === name.toLowerCase());
+				movementForm.category_id.value = createdCategory ? String(createdCategory.id) : '';
+			}
+			if (!movementForm.category_id.value) throw new Error('Categoría creada, pero no se pudo seleccionar automáticamente. Selecciónala manualmente.');
 			categoryInput.value = '';
 			categoryWrap.hidden = true;
 			setFeedback(categoryCreateFeedback, 'Categoría creada correctamente.');
+			setFeedback(modalFeedback, '');
 		} catch (err) {
 			setFeedback(categoryCreateFeedback, normalizeBackendError(err.message), true);
 		}
