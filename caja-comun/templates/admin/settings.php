@@ -4,7 +4,7 @@ $profile_b = (string) $this->settings_repository->get( 'ccf_frontend_profile_b_n
 ?>
 <div class="wrap ccf-admin-wrap">
 	<h1>Ajustes frontend</h1>
-	<p>La protección de acceso frontend ahora depende solo de la contraseña nativa de la página de WordPress que contiene el shortcode <code>[ccf_app]</code>.</p>
+	<p>Usa una página protegida de WordPress con el shortcode <code>[ccf_app]</code>.</p>
 	<form method="post">
 		<?php wp_nonce_field( 'ccf_save_frontend_settings_action' ); ?>
 		<table class="form-table" role="presentation">
@@ -13,6 +13,4 @@ $profile_b = (string) $this->settings_repository->get( 'ccf_frontend_profile_b_n
 		</table>
 		<p><button class="button button-primary" name="ccf_save_frontend_settings" value="1">Guardar ajustes frontend</button></p>
 	</form>
-	<h2>Shortcodes frontend</h2>
-	<code>[ccf_app]</code> <code>[ccf_dashboard]</code> <code>[ccf_income_form]</code> <code>[ccf_transaction_form]</code> <code>[ccf_transactions_list]</code>
 </div>
