@@ -240,6 +240,13 @@ class Installer {
 			'enable_categories_ui'     => '0',
 			'enable_attachments_ui'    => '0',
 			'enable_review_ui'         => '0',
+			'ccf_enable_frontend_app'    => '1',
+			'ccf_frontend_session_hours' => '12',
+			'ccf_frontend_max_attempts'  => '5',
+			'ccf_frontend_block_minutes' => '15',
+			'ccf_frontend_profile_pin_enabled' => '0',
+			'ccf_frontend_profile_a_name' => 'Perfil A',
+			'ccf_frontend_profile_b_name' => 'Perfil B',
 		);
 
 		foreach ( $defaults as $setting_key => $setting_value ) {
