@@ -66,15 +66,40 @@ class AccountsRepository {
 		return $row ?: null;
 	}
 
+	public function find_first_common(): ?array {
+		global $wpdb;
+		$table = $this->database_manager->table( 'accounts' );
+		$row   = $wpdb->get_row( "SELECT * FROM {$table} WHERE type = 'common' ORDER BY display_order ASC, id ASC LIMIT 1", ARRAY_A );
+
+		return $row ?: null;
+	}
+
 	public function save( array $data ): int {
 		global $wpdb;
 		$table = $this->database_manager->table( 'accounts' );
 		$now   = $this->database_manager->now();
 
+		$name = sanitize_text_field( (string) ( $data['name'] ?? '' ) );
+		$slug = sanitize_title( (string) ( $data['slug'] ?? '' ) );
+		$type = sanitize_key( (string) ( $data['type'] ?? 'common' ) );
+
+		if ( '' === $name ) {
+			$name = 'Cuenta común';
+		}
+		if ( '' === $slug ) {
+			$slug = sanitize_title( $name );
+		}
+		if ( '' === $slug ) {
+			$slug = 'cuenta-comun';
+		}
+		if ( '' === $type ) {
+			$type = 'common';
+		}
+
 		$payload = array(
-			'slug'            => sanitize_title( (string) $data['slug'] ),
-			'name'            => sanitize_text_field( (string) $data['name'] ),
-			'type'            => sanitize_key( (string) $data['type'] ),
+			'slug'            => $slug,
+			'name'            => $name,
+			'type'            => $type,
 			'description'     => sanitize_textarea_field( (string) ( $data['description'] ?? '' ) ),
 			'status'          => in_array( $data['status'] ?? 'active', array( 'active', 'inactive' ), true ) ? $data['status'] : 'active',
 			'display_order'   => (int) ( $data['display_order'] ?? 0 ),

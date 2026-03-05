@@ -28,14 +28,16 @@ class DashboardService {
 		$allocation_table = $this->database_manager->table( 'monthly_allocations' );
 		$transactions_table = $this->database_manager->table( 'transactions' );
 		$allocation = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$allocation_table} WHERE month_key = %s", $month_key ), ARRAY_A );
-		$totals = $this->incomes_repository->totals_for_month( $month_key );
-		$common_expense = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(SUM(amount),0) FROM {$transactions_table} WHERE month_key = %s AND type = 'expense'", $month_key ) );
+		$income_totals      = $this->incomes_repository->totals_for_month( $month_key );
+		$transaction_totals = $this->transactions_repository->month_totals( $month_key );
+		$cash_in_total      = (float) $transaction_totals['cash_in_total'] > 0 ? (float) $transaction_totals['cash_in_total'] : (float) $income_totals['total'];
+		$common_expense     = (float) $transaction_totals['expense_total'];
 
 		return array(
 			'month_key' => $month_key,
-			'income_total' => (float) $totals['total'],
+			'income_total' => $cash_in_total,
 			'separated_total' => $allocation ? (float) $allocation['separated_total'] : 0.0,
-			'common_budget' => $allocation ? (float) $allocation['common_budget'] : (float) $totals['total'],
+			'common_budget' => $allocation ? (float) $allocation['common_budget'] : $cash_in_total,
 			'common_expense' => $common_expense,
 			'allocation_status' => $allocation ? $allocation['status'] : 'pending',
 			'latest_incomes' => $this->incomes_repository->list( $month_key, 5 ),

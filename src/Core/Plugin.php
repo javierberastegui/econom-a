@@ -6,6 +6,7 @@ use CCF\Admin\AdminAssets;
 use CCF\Admin\AdminMenu;
 use CCF\Database\DatabaseManager;
 use CCF\Frontend\Shortcodes;
+use CCF\Integration\ControlHogarBridge;
 use CCF\REST\Routes;
 use CCF\Repositories\AccountsRepository;
 use CCF\Repositories\CategoriesRepository;
@@ -45,15 +46,17 @@ class Plugin {
 		$charts_service           = new ChartsService( $incomes_repository, $transactions_repository, $database_manager );
 		$allocation_service       = new MonthlyAllocationService( $accounts_repository, $incomes_repository, $transactions_repository, $database_manager, $audit_log_service );
 		$dashboard_service        = new DashboardService( $incomes_repository, $transactions_repository, $database_manager, $charts_service );
-		$admin_menu              = new AdminMenu( $dashboard_service, $incomes_repository, $allocation_service, $accounts_repository, $categories_repository, $transactions_repository, $attachments_service, $notes_service, $review_service, $settings_repository );
-		$admin_assets            = new AdminAssets();
-		$shortcodes              = new Shortcodes( $dashboard_service );
-		$routes                  = new Routes( $accounts_repository, $categories_repository, $incomes_repository, $transactions_repository, $allocation_service, $dashboard_service, $attachments_service, $notes_service, $review_service, $charts_service, $accounts_service, $categories_service, $transactions_service, $audit_log_service );
+		$admin_menu               = new AdminMenu( $dashboard_service, $incomes_repository, $allocation_service, $accounts_repository, $categories_repository, $transactions_repository, $attachments_service, $notes_service, $review_service, $settings_repository );
+		$admin_assets             = new AdminAssets();
+		$shortcodes               = new Shortcodes( $dashboard_service );
+		$bridge                  = new ControlHogarBridge();
+		$routes                   = new Routes( $accounts_repository, $categories_repository, $incomes_repository, $transactions_repository, $allocation_service, $dashboard_service, $attachments_service, $notes_service, $review_service, $charts_service, $accounts_service, $categories_service, $transactions_service, $audit_log_service );
 
 		add_action( 'admin_menu', array( $admin_menu, 'register' ) );
-		add_action( 'admin_init', array( Activator::class, 'maybe_recover' ) );
+		add_action( 'init', array( Activator::class, 'maybe_recover' ) );
 		add_action( 'admin_enqueue_scripts', array( $admin_assets, 'enqueue' ) );
 		add_action( 'init', array( $shortcodes, 'register' ) );
+		$bridge->register();
 		add_action( 'rest_api_init', array( $routes, 'register' ) );
 	}
 }

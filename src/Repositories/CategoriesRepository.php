@@ -36,8 +36,9 @@ class CategoriesRepository {
 
 	public function find_by_name( string $name ): ?array {
 		global $wpdb;
-		$table = $this->database_manager->table( 'categories' );
-		$row   = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE name = %s LIMIT 1", sanitize_text_field( $name ) ), ARRAY_A );
+		$table  = $this->database_manager->table( 'categories' );
+		$needle = sanitize_text_field( $name );
+		$row    = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE LOWER(name) = LOWER(%s) LIMIT 1", $needle ), ARRAY_A );
 
 		return $row ?: null;
 	}
@@ -48,7 +49,7 @@ class CategoriesRepository {
 		$now   = $this->database_manager->now();
 		$id    = ! empty( $data['id'] ) ? (int) $data['id'] : 0;
 
-		$name          = sanitize_text_field( (string) $data['name'] );
+		$name          = sanitize_text_field( (string) ( $data['name'] ?? '' ) );
 		$provided_slug = sanitize_title( (string) ( $data['slug'] ?? '' ) );
 		$base_slug     = $provided_slug ?: sanitize_title( $name );
 		if ( '' === $base_slug ) {

@@ -20,12 +20,18 @@
 			<article class="ccf-kpi-card"><span>Presupuesto común</span><strong id="ccf-kpi-common">0,00 €</strong></article>
 		</section>
 
-		<section class="ccf-card" aria-label="Movimientos">
+		<section class="ccf-card" id="ccf-movements-section" aria-label="Movimientos">
 			<div class="ccf-section-header">
-				<h3>Movimientos del mes</h3>
-				<p id="ccf-table-feedback" class="ccf-feedback" role="status"></p>
+				<div>
+					<h3>Movimientos del mes</h3>
+					<p id="ccf-table-feedback" class="ccf-feedback" role="status"></p>
+				</div>
+				<div class="ccf-section-tools">
+					<span id="ccf-pending-pill" class="ccf-pending-pill" hidden>Todo al día</span>
+					<button type="button" id="ccf-toggle-movements" class="ccf-btn ccf-btn-soft">Ver movimientos</button>
+				</div>
 			</div>
-			<div class="ccf-table-wrap">
+			<div class="ccf-table-wrap" id="ccf-table-wrap">
 				<table id="ccf-transactions-table">
 					<thead>
 						<tr>
@@ -41,9 +47,21 @@
 		<section class="ccf-card" aria-label="Gráficas">
 			<div class="ccf-section-header"><h3>Visión rápida</h3></div>
 			<div class="ccf-charts-grid">
-				<div class="ccf-chart-card"><h4>Ingresos vs gastos</h4><canvas id="ccf-chart-income"></canvas><p class="ccf-chart-empty" hidden>No hay datos suficientes para mostrar esta gráfica.</p></div>
-				<div class="ccf-chart-card"><h4>Distribución por categorías</h4><canvas id="ccf-chart-category"></canvas><p class="ccf-chart-empty" hidden>No hay datos suficientes para mostrar esta gráfica.</p></div>
-				<div class="ccf-chart-card"><h4>Evolución mensual</h4><canvas id="ccf-chart-trend"></canvas><p class="ccf-chart-empty" hidden>No hay datos suficientes para mostrar esta gráfica.</p></div>
+				<div class="ccf-chart-card">
+					<h4>Ingresos vs gastos</h4>
+					<div class="ccf-chart-canvas"><canvas id="ccf-chart-income"></canvas></div>
+					<p class="ccf-chart-empty" hidden>No hay datos suficientes para mostrar esta gráfica.</p>
+				</div>
+				<div class="ccf-chart-card">
+					<h4>Distribución por categorías</h4>
+					<div class="ccf-chart-canvas"><canvas id="ccf-chart-category"></canvas></div>
+					<p class="ccf-chart-empty" hidden>No hay datos suficientes para mostrar esta gráfica.</p>
+				</div>
+				<div class="ccf-chart-card ccf-chart-card--wide">
+					<h4>Evolución últimos 6 meses</h4>
+					<div class="ccf-chart-canvas"><canvas id="ccf-chart-trend"></canvas></div>
+					<p class="ccf-chart-empty" hidden>No hay datos suficientes para mostrar esta gráfica.</p>
+				</div>
 			</div>
 		</section>
 	</div>

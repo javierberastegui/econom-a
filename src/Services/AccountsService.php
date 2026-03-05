@@ -13,12 +13,25 @@ class AccountsService {
 	public function __construct( private AccountsRepository $accounts_repository, private AuditLogService $audit_log_service ) {}
 
 	public function create( array $data ) {
-		if ( empty( $data['name'] ) || empty( $data['type'] ) ) {
-			return new WP_Error( 'ccf_invalid_account', 'name y type son obligatorios.', array( 'status' => 400 ) );
+		$data['type'] = sanitize_key( (string) ( $data['type'] ?? 'common' ) ) ?: 'common';
+
+		if ( empty( $data['name'] ) ) {
+			return new WP_Error( 'ccf_invalid_account', 'name es obligatorio.', array( 'status' => 400 ) );
 		}
+
+		if ( 'common' === $data['type'] ) {
+			$existing = $this->accounts_repository->find_first_common();
+			if ( $existing ) {
+				$id = (int) $existing['id'];
+				$this->accounts_repository->save( array_merge( $existing, $data, array( 'id' => $id ) ) );
+				$this->audit_log_service->log( 'account_updated', 'account', $id, $data );
+				return $id;
+			}
+		}
+
 		$id = $this->accounts_repository->save( $data );
 		if ( $id <= 0 ) {
-			return new WP_Error( 'ccf_account_not_saved', 'No se pudo guardar la cuenta. Revisa si ya existe una cuenta con ese nombre.', array( 'status' => 400 ) );
+			return new WP_Error( 'ccf_account_not_saved', 'No se pudo guardar la cuenta.', array( 'status' => 400 ) );
 		}
 		$this->audit_log_service->log( 'account_created', 'account', $id, $data );
 		return $id;

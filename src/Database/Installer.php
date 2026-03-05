@@ -189,10 +189,6 @@ class Installer {
 
 		$default_accounts = array(
 			array( 'slug' => 'cuenta-comun', 'name' => 'Cuenta común', 'type' => 'common', 'display_order' => 1 ),
-			array( 'slug' => 'cuenta-personal-usuario-1', 'name' => 'Cuenta personal Usuario 1', 'type' => 'personal', 'display_order' => 2 ),
-			array( 'slug' => 'cuenta-personal-usuario-2', 'name' => 'Cuenta personal Usuario 2', 'type' => 'personal', 'display_order' => 3 ),
-			array( 'slug' => 'cuenta-ahorro', 'name' => 'Cuenta ahorro opcional', 'type' => 'savings', 'display_order' => 4 ),
-			array( 'slug' => 'cuenta-ajuste', 'name' => 'Cuenta ajuste opcional', 'type' => 'adjustment', 'display_order' => 5 ),
 		);
 
 		foreach ( $default_accounts as $account ) {
@@ -215,26 +211,6 @@ class Installer {
 			}
 		}
 
-		$default_categories = array( 'Supermercado', 'Hogar', 'Transporte', 'Gasolina', 'Hijos', 'Salud', 'Ocio', 'Suscripciones', 'Formación', 'Deuda', 'Ahorro', 'Ajuste', 'Imprevistos', 'Ropa', 'Tecnología' );
-		foreach ( $default_categories as $index => $name ) {
-			$slug = sanitize_title( $name );
-			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$categories_table} WHERE slug = %s", $slug ) );
-			if ( ! $exists ) {
-				$wpdb->insert(
-					$categories_table,
-					array(
-						'slug'          => $slug,
-						'name'          => $name,
-						'color'         => '#2271b1',
-						'icon'          => 'money-alt',
-						'display_order' => $index + 1,
-						'active'        => 1,
-						'created_at'    => $now,
-						'updated_at'    => $now,
-					)
-				);
-			}
-		}
 
 		$defaults = array(
 			'ccf_separation_percent'   => '10.00',

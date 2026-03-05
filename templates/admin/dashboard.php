@@ -7,20 +7,14 @@
 		<div class="ccf-kpi-card"><h3>Gasto común real</h3><p><?php echo esc_html( number_format( (float) $summary['common_expense'], 2 ) ); ?> €</p></div>
 	</div>
 
-	<div class="ccf-kpi-card" style="margin-top:20px;">
-		<h2>Charts (data ready)</h2>
-		<pre id="ccf-charts-ready">Cargando datos...</pre>
+	<div class="ccf-chart-grid" style="margin-top:20px;">
+		<canvas id="ccf-chart-income"></canvas>
+		<canvas id="ccf-chart-budget-expense"></canvas>
+		<canvas id="ccf-chart-categories"></canvas>
+		<canvas id="ccf-chart-evolution"></canvas>
 	</div>
+
 	<script>
-	(function () {
-		const target = document.getElementById('ccf-charts-ready');
-		if (!target || !window.ccfAdmin) return;
-		fetch(`${window.ccfAdmin.restRoot}charts/income-vs-common?from=<?php echo esc_js( $month_key ); ?>&to=<?php echo esc_js( $month_key ); ?>`, {
-			headers: { 'X-WP-Nonce': window.ccfAdmin.nonce }
-		})
-			.then((res) => res.json())
-			.then((data) => target.textContent = JSON.stringify(data, null, 2))
-			.catch(() => target.textContent = 'No se pudo cargar el endpoint de charts.');
-	})();
+		window.ccfDashboardCharts = <?php echo wp_json_encode( $summary['charts'] ); ?>;
 	</script>
 </div>

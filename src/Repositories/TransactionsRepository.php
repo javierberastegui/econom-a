@@ -116,6 +116,36 @@ class TransactionsRepository {
 		return $this->list( array(), $limit );
 	}
 
+
+	public function month_totals( string $month_key ): array {
+		global $wpdb;
+		$table = $this->database_manager->table( 'transactions' );
+		$row   = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT
+					COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income_total,
+					COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense_total,
+					COALESCE(SUM(CASE WHEN type = 'adjustment' THEN amount ELSE 0 END), 0) AS adjustment_total
+				 FROM {$table}
+				 WHERE month_key = %s",
+				$month_key
+			),
+			ARRAY_A
+		);
+
+		$row = $row ?: array();
+		$income_total     = (float) ( $row['income_total'] ?? 0 );
+		$expense_total    = (float) ( $row['expense_total'] ?? 0 );
+		$adjustment_total = (float) ( $row['adjustment_total'] ?? 0 );
+
+		return array(
+			'income_total'     => round( $income_total, 2 ),
+			'expense_total'    => round( $expense_total, 2 ),
+			'adjustment_total' => round( $adjustment_total, 2 ),
+			'cash_in_total'    => round( $income_total + $adjustment_total, 2 ),
+		);
+	}
+
 	public function review_queue( string $month_key ): array {
 		global $wpdb;
 		$table       = $this->database_manager->table( 'transactions' );
